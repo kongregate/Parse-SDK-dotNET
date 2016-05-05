@@ -11,7 +11,7 @@ namespace Parse.Common.Internal {
   /// Implements `IStorageController` for PCL targets, based off of PCLStorage.
   /// </summary>
   public class StorageController : IStorageController {
-    private const string ParseStorageFileName = "Parse.settings";
+    public const string ParseStorageFileName = "Parse.settings";
 
     private TaskQueue taskQueue = new TaskQueue();
     private string settingsPath;
@@ -35,10 +35,16 @@ namespace Parse.Common.Internal {
           jsonEncoded = Json.Encode(dictionary);
         }
 
-        if (Application.isWebPlayer) {
-          PlayerPrefs.SetString(ParseStorageFileName, jsonEncoded);
-          PlayerPrefs.Save();
-        } else if (Application.platform == RuntimePlatform.tvOS) {
+        if (UnityRuntimeConfig.IsWebPlayer) {
+
+           Dispatcher.Instance.ExecuteOnMainThread.Enqueue(() =>
+           {
+               Debug.Log("Executing Dispatch Player Prefs");
+               PlayerPrefs.SetString(ParseStorageFileName, jsonEncoded);
+               PlayerPrefs.Save();
+           });
+
+        } else if (UnityRuntimeConfig.platform == RuntimePlatform.tvOS) {
           Debug.Log("Running on TvOS, prefs cannot be saved.");
         } else {
           using (var fs = new FileStream(settingsPath, FileMode.Create, FileAccess.Write)) {
@@ -51,13 +57,17 @@ namespace Parse.Common.Internal {
         return Task.FromResult<object>(null);
       }
 
+        
       internal Task LoadAsync() {
         string jsonString = null;
 
         try {
-          if (Application.isWebPlayer) {
-            jsonString = PlayerPrefs.GetString(ParseStorageFileName, null);
-          } else if (Application.platform == RuntimePlatform.tvOS) {
+           if (UnityRuntimeConfig.IsWebPlayer) {
+
+              Dispatcher.Instance.UpdatePlayerPrefs();
+              jsonString = Dispatcher.Instance.WebPlayerPrefs;
+
+          } else if (UnityRuntimeConfig.platform == RuntimePlatform.tvOS) {
             Debug.Log("Running on TvOS, prefs cannot be loaded.");
           } else {
             using (var fs = new FileStream(settingsPath, FileMode.Open, FileAccess.Read)) {
@@ -77,9 +87,10 @@ namespace Parse.Common.Internal {
         }
 
         Dictionary<string, object> decoded = Json.Parse(jsonString) as Dictionary<string, object>;
-        lock (mutex) {
-          dictionary = decoded ?? new Dictionary<string, object>();
-          return Task.FromResult<object>(null);
+        lock (mutex)
+        {
+           dictionary = decoded ?? new Dictionary<string, object>();
+           return Task.FromResult<object>(null);
         }
       }
 
@@ -145,7 +156,7 @@ namespace Parse.Common.Internal {
     }
 
     public StorageController() {
-      settingsPath = Path.Combine(Application.persistentDataPath, ParseStorageFileName);
+      settingsPath = Path.Combine(UnityRuntimeConfig.persistentDataPath, ParseStorageFileName);
     }
 
     public StorageController(String settingsPath) {

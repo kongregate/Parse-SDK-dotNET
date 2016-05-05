@@ -29,11 +29,11 @@ namespace AssemblyLister {
       List<Assembly> assemblies = new List<Assembly>();
       assemblies.Add(assembly);
 
-      foreach (var reference in assembly.GetReferencedAssemblies()) {
+      foreach (AssemblyName reference in assembly.GetReferencedAssemblies()) {
         if (seen.Contains(reference.FullName))
           continue;
 
-        Assembly referencedAsm = Assembly.Load(reference);
+        Assembly referencedAsm = Assembly.Load(reference.FullName);
         assemblies.AddRange(referencedAsm.DeepWalkReferences(seen));
       }
 

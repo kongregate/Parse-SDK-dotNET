@@ -27,9 +27,30 @@ namespace Parse.Common.Internal {
 
     public GameObject GameObject { get; set; }
     public IEnumerator DispatcherCoroutine { get; private set; }
+    public readonly Queue<Action> ExecuteOnMainThread = new Queue<Action>();
+    public string WebPlayerPrefs { get; private set; }
 
     private readonly ReaderWriterLockSlim dispatchQueueLock = new ReaderWriterLockSlim();
     private readonly Queue<Action> dispatchQueue = new Queue<Action>();
+    private bool updatePlayerPrefs = false;
+  
+    public void Update()
+    {
+        if (updatePlayerPrefs)
+        {
+           updatePlayerPrefs = false;
+           WebPlayerPrefs = PlayerPrefs.GetString(StorageController.ParseStorageFileName, null);
+        }
+        while(ExecuteOnMainThread.Count > 0)
+        {
+           ExecuteOnMainThread.Dequeue()();
+        }
+    }
+
+    public void UpdatePlayerPrefs()
+    {
+       updatePlayerPrefs = true;
+    }
 
     public void Post(Action action) {
       if (dispatchQueueLock.IsWriteLockHeld) {

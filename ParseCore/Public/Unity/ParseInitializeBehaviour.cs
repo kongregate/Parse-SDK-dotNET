@@ -8,12 +8,12 @@ using System.Text;
 using UnityEngine;
 
 namespace Parse {
-  /// <summary>
-  /// Mandatory MonoBehaviour for scenes that use Parse. Set the application ID and .NET key
-  /// in the editor.
-  /// </summary>
-  // TODO (hallucinogen): somehow because of Push, we need this class to be added in a GameObject
-  // called `ParseInitializeBehaviour`. We might want to fix this.
+    /// <summary>
+    /// Mandatory MonoBehaviour for scenes that use Parse. Set the application ID and .NET key
+    /// in the editor.
+    /// </summary>
+    // TODO (hallucinogen): somehow because of Push, we need this class to be added in a GameObject
+    // called `ParseInitializeBehaviour`. We might want to fix this.
   public class ParseInitializeBehaviour : MonoBehaviour {
     private static bool isInitialized = false;
 
@@ -32,14 +32,29 @@ namespace Parse {
     [SerializeField]
     public string server;
 
+    private bool dispatcherRegistered = false;
+
     /// <summary>
     /// Initializes the Parse SDK and begins running network requests created by Parse.
     /// </summary>
     public virtual void Awake() {
+
+      UnityRuntimeConfig.IsWebPlayer = Application.isWebPlayer;
+      UnityRuntimeConfig.platform = Application.platform;
+      UnityRuntimeConfig.persistentDataPath = Application.persistentDataPath;
+
       Initialize();
 
       // Force the name to be `ParseInitializeBehaviour` in runtime.
       gameObject.name = "ParseInitializeBehaviour";
+    }
+
+    void Update()
+    {
+        if (dispatcherRegistered)
+        {
+           Dispatcher.Instance.Update();
+        }
     }
 
     public void Initialize() {
@@ -61,6 +76,14 @@ namespace Parse {
 
       // Kick off the dispatcher.
       StartCoroutine(Dispatcher.Instance.DispatcherCoroutine);
+
+      dispatcherRegistered = true;
+
+      if (UnityRuntimeConfig.IsWebPlayer)
+      {
+          Dispatcher.Instance.UpdatePlayerPrefs();
+      }
+
     }
   }
 }
